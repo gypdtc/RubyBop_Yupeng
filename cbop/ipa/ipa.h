@@ -199,7 +199,7 @@ static inline huge_block_t * gethugeblock(void * user_payload) {
   return (huge_block_t *) (((char*) user_payload) - sizeof(huge_block_t));
 }
 
-static inline void * getpayload(volatile block_t * block) {
+static inline void * getpayload_ipa(volatile block_t * block) {
   return (void *) (((char*) block) + sizeof(block_t));
 }
 
