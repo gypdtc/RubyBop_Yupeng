@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "ipa.h"
+#include "../ipa.h"
 #include "dummy.h"
 #include "teardown.h"
 

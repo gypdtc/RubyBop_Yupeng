@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "bop_api.h"
+#include "../../../bop_api.h"
 
 //6/20/2011
 //parallel string subsitution

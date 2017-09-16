@@ -6,10 +6,9 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "bop_api.h"
+#include "../../bop_api.h"
 
 int ITERS = 4;
-int *t;
 
 int main(int argc, char ** argv) {
 
@@ -20,8 +19,9 @@ int main(int argc, char ** argv) {
     assert(ITERS > 0);
   }
 
-  t = (int *) malloc(ITERS * sizeof(int));
-
+  int* t = (int *) malloc(ITERS * sizeof(int));
+  printf("%lf\n",1.0 * sizeof(t) / sizeof(int));
+  /*
   printf("%d naps:", ITERS);
   for(i=0;i<ITERS;i++) {
     t[i] = rand()%2;
@@ -30,8 +30,11 @@ int main(int argc, char ** argv) {
   }
   printf("\n");
 
+
+
   time_t start, end;
   //srand(getpid());
+ 
   start = time(NULL);
 
   for(i=0;i<ITERS;i++) {
@@ -49,5 +52,7 @@ int main(int argc, char ** argv) {
   end = time(NULL);
   printf("process time: %d seconds\n", total);
   printf("clock time: %lu seconds\n", (int) end-start);
+ */
+
   return 0;
 }

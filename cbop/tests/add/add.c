@@ -6,7 +6,7 @@
 
 /* The program makes an array of randomly initialized integers and adds them together. */
 
-#include "bop_api.h"
+#include "../../bop_api.h"
 
 double * data;
 double sum;
