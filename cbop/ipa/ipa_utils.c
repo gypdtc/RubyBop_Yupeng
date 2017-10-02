@@ -13,7 +13,8 @@
 
 void ipa_strerr(char * buffer, size_t len) {
   // For now, no error handling
-  assert(strerror_r(errno, buffer, len) == 0);
+  strerror_r(errno, buffer, len);
+  // assert(strerror_r(errno, buffer, len) == 0);
 }
 
 // Get the
