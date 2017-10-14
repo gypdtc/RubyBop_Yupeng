@@ -19,7 +19,7 @@ extern header_page_t * seq_headers_last;
 extern volatile header_page_t * first_full;
 
 void beginspec() {
-  assert(speculating()); // TODO -- probably special case this function
+  //assert(speculating()); // TODO -- probably special case this function
   // void * end_ds = sbrk(0);
   // printf("sbrk pre-spec 0x%p\n", end_ds);
   my_growth = 0;
@@ -32,7 +32,7 @@ void beginspec() {
 }
 
 void endspec(bool ppr_won) {
-  assert(speculating()); // TODO -- probably special case this function
+  //assert(speculating()); // TODO -- probably special case this function
   if (my_growth < shared->spec_growth) {
     inc_heap(shared->spec_growth - my_growth);
   }
