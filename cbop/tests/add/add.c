@@ -83,7 +83,7 @@ double lots_of_computation_on_block( int start, int end ) {
   for ( j = start ; j < end ; j ++ )
     total += sin(data[ j ]) * sin(data[ j ]) + cos(data[ j ]) * cos(data[ j ]);
 
-  BOP_record_read( &data[j], sizeof( double )*(end - start) );
+  BOP_record_read( &data[start], sizeof( double )*(end - start) );
 
   return total;
 }

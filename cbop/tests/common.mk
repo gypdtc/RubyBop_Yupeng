@@ -37,8 +37,8 @@ clean:
 
 %_orig: %_orig.o $(LIBRARY)
 	@echo Linking original test binary $@
-	@$(CC) $(CFLAGS) -o $@ $? $(ABS_LIB) $(LDFLAGS)
+	@$(CC) $(OTHER) $(CFLAGS) -o $@ $? $(ABS_LIB) $(LDFLAGS)
 
 %_bop: %_bop.o
 	@echo Linking bop test binary $@
-	@$(CC) $(CFLAGS) -DBOP -o $@ $? $(ABS_LIB) $(LDFLAGS)
+	@$(CC) $(OTHER) $(CFLAGS) -DBOP -o $@ $? $(ABS_LIB) $(LDFLAGS)
