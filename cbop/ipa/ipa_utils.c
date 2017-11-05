@@ -81,7 +81,8 @@ void ipa_teardown() {
   int written;
   bool no_errors = true;
   // ensure the directory is present
-  for (int i = 1; i <= shared->next_name; i++) {
+  int i;
+  for (i = 1; i <= shared->next_name; i++) {
     written = snprintf(&path[0], sizeof(path), "%s%d/%d", "/tmp/bop/", getuniqueid(), i);
     if (written > sizeof(path) || written < 0) {
       ipa_perror("Unable to write directory name for cleanup");

@@ -30,7 +30,6 @@ int main(){
     	memcpy(key, keyall, i + 1);
      	key[i + 1] = '\0';
       	assert(hashmap_put(hash, key, &i) == MAP_OK);
-      	sleep(1);
    }
    
    printf("Puting all 10 elements in the hashmap\n");
@@ -39,12 +38,15 @@ int main(){
    for(i = 0 ; i < 10 ; i++){
   	void *result;
 	BOP_ppr_begin(1);
-		//char key[STRSIZE];
-        	//memcpy(key, keyall, i + 1);
-        	//key[i + 1] = '\0';
-		//assert(hashmap_get(hash , key  ,&result) == MAP_OK);
-		//int *p = (int *)result;
-		//sum += *p;
+		char key[STRSIZE];
+        	memcpy(key, keyall, i + 1);
+        	key[i + 1] = '\0';
+		assert(hashmap_get(hash , key  ,&result) == MAP_OK);
+		int *p = (int *)result;
+		sum += *p;
+		BOP_record_read(&sum , sizeof(int));
+		BOP_record_write(&sum , sizeof(int));
+		sleep(1);
 	BOP_ppr_end(1);
    }
    
