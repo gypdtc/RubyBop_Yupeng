@@ -2,42 +2,47 @@
  * Generic map implementation.
  */
 #include "hashmap.h"
-
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#define INITIAL_SIZE (256)
+#define INITIAL_SIZE (8)
 #define MAX_CHAIN_LENGTH (8)
+
+int times;
 
 /* We need to keep keys and values */
 typedef struct _hashmap_element{
 	char* key;
-	int in_use;
 	any_t data;
+	struct _hashmap_element* next;
 } hashmap_element;
 
 /* A hashmap has some maximum size and current size,
  * as well as the data to hold. */
 typedef struct _hashmap_map{
 	int table_size;
-	int size;
-	hashmap_element *data;
+	//the max size of a linked list
+	int max_size;
+	//the size of value element
+	int value_size;
+	hashmap_element **data;
 } hashmap_map;
 
 /*
  * Return an empty hashmap, or NULL on failure.
  */
-map_t hashmap_new() {
+map_t hashmap_new(int size) {
+	assert(size != 0);
 	hashmap_map* m = (hashmap_map*) malloc(sizeof(hashmap_map));
 	if(!m) goto err;
-
-	m->data = (hashmap_element*) calloc(INITIAL_SIZE, sizeof(hashmap_element));
+times = 0;
+	m->data = (hashmap_element**) calloc(INITIAL_SIZE, sizeof(hashmap_element*));
 	if(!m->data) goto err;
 
 	m->table_size = INITIAL_SIZE;
-	m->size = 0;
-
+	m->value_size = size;
 	return m;
 	err:
 		if (m)
@@ -188,31 +193,45 @@ unsigned int hashmap_hash_int(hashmap_map * m, char* keystring){
  * Return the integer of the location in data
  * to store the point to the item, or MAP_FULL.
  */
-int hashmap_hash(map_t in, char* key){
+hashmap_element* hashmap_hash(map_t in, char* key){
 	int curr;
-	int i;
-
+	
 	/* Cast the hashmap */
 	hashmap_map* m = (hashmap_map *) in;
-
-	/* If full, return immediately */
-	if(m->size >= (m->table_size/2)) return MAP_FULL;
 
 	/* Find the best index */
 	curr = hashmap_hash_int(m, key);
 
-	/* Linear probing */
-	for(i = 0; i< MAX_CHAIN_LENGTH; i++){
-		if(m->data[curr].in_use == 0)
-			return curr;
 
-		if(m->data[curr].in_use == 1 && (strcmp(m->data[curr].key,key)==0))
-			return curr;
-
-		curr = (curr + 1) % m->table_size;
+	hashmap_element *pointer = m->data[curr];
+	hashmap_element *_pointer;
+	if(!pointer){
+		pointer = (hashmap_element*) calloc (1, sizeof(hashmap_element));
+		m->data[curr] = pointer;
+		return pointer;
 	}
 
+
+	int length = 0;
+	
+	while(length <= MAX_CHAIN_LENGTH){
+			
+		if(strcmp(pointer->key,key) == 0){
+			return pointer;
+		}
+
+		length++;
+		_pointer = pointer->next;
+		
+		if(!_pointer){
+			_pointer = (hashmap_element*) calloc (1 , sizeof(hashmap_element));
+			pointer->next = _pointer;
+			return _pointer;
+		}	
+		pointer = _pointer;
+	}
 	return MAP_FULL;
+
 }
 
 /*
@@ -221,12 +240,12 @@ int hashmap_hash(map_t in, char* key){
 int hashmap_rehash(map_t in){
 	int i;
 	int old_size;
-	hashmap_element* curr;
+	hashmap_element** curr;
 
 	/* Setup the new elements */
 	hashmap_map *m = (hashmap_map *) in;
-	hashmap_element* temp = (hashmap_element *)
-		calloc(2 * m->table_size, sizeof(hashmap_element));
+	hashmap_element** temp = (hashmap_element **)
+		calloc(2 * m->table_size, sizeof(hashmap_element*));
 	if(!temp) return MAP_OMEM;
 
 	/* Update the array */
@@ -236,50 +255,58 @@ int hashmap_rehash(map_t in){
 	/* Update the size */
 	old_size = m->table_size;
 	m->table_size = 2 * m->table_size;
-	m->size = 0;
+
 
 	/* Rehash the elements */
-	for(i = 0; i < old_size; i++){
-        int status;
-
-        if (curr[i].in_use == 0)
-            continue;
-            
-		status = hashmap_put(m, curr[i].key, curr[i].data);
-		if (status != MAP_OK)
-			return status;
+		
+	for(i = 0 ; i < old_size ; i ++){
+		int status;
+		hashmap_element *pointer = curr[i];
+		while(pointer){
+			status = hashmap_put(m ,pointer->key , pointer->data);
+			if (status != MAP_OK)
+				return status;
+			pointer = pointer->next;
+		} 
+	
 	}
 
 	free(curr);
 
 	return MAP_OK;
+
+	
 }
 
 /*
  * Add a pointer to the hashmap with some key
  */
 int hashmap_put(map_t in, char* key, any_t value){
-	int index;
-	hashmap_map* m;
-
-	/* Cast the hashmap */
-	m = (hashmap_map *) in;
-
+	hashmap_element* target_pointer;
+	
+	hashmap_map *m = (hashmap_map *) in;
 	/* Find a place to put our value */
-	index = hashmap_hash(in, key);
-	while(index == MAP_FULL){
+	target_pointer = hashmap_hash(in, key);
+	while(target_pointer == MAP_FULL){
 		if (hashmap_rehash(in) == MAP_OMEM) {
 			return MAP_OMEM;
 		}
-		index = hashmap_hash(in, key);
+		target_pointer = hashmap_hash(in, key);
 	}
 
 	/* Set the data */
-	m->data[index].data = value;
-	m->data[index].key = key;
-	m->data[index].in_use = 1;
-	m->size++; 
+	if(m->value_size >0)
+	{	
+		target_pointer->data = (any_t) calloc(1, m->value_size);
+		memcpy(target_pointer->data , value , m->value_size);
+	}else{
+		target_pointer->data = (any_t) calloc(strlen((char*) value) + 1 , sizeof(char));
+		memcpy(target_pointer->data , value , strlen((char*) value));
+	}
 
+	target_pointer->key = (char *) calloc(strlen(key) + 1,  sizeof(char));
+	memcpy(target_pointer->key , key , strlen(key));
+	target_pointer->next = NULL;
 	return MAP_OK;
 }
 
@@ -288,68 +315,84 @@ int hashmap_put(map_t in, char* key, any_t value){
  */
 int hashmap_get(map_t in, char* key, any_t *arg){
 	int curr;
-	int i;
+	
 	hashmap_map* m;
-
+	hashmap_element* pointer;
+	
 	/* Cast the hashmap */
 	m = (hashmap_map *) in;
 
 	/* Find data location */
 	curr = hashmap_hash_int(m, key);
 
-	/* Linear probing, if necessary */
-	for(i = 0; i<MAX_CHAIN_LENGTH; i++){
-
-        int in_use = m->data[curr].in_use;
-        if (in_use == 1){
-            if (strcmp(m->data[curr].key,key)==0){
-                *arg = (m->data[curr].data);
-                return MAP_OK;
-            }
-		}
-
-		curr = (curr + 1) % m->table_size;
+	pointer = m->data[curr];
+	
+	while(pointer != NULL){
+		if (strcmp(pointer->key,key)==0){
+                	*arg = (pointer->data);
+                	return MAP_OK;
+            	}
+		pointer = pointer -> next;
 	}
-
-	*arg = NULL;
-
+	
 	/* Not found */
+	*arg = NULL;
 	return MAP_MISSING;
+	
 }
 
+/* Iterate the hashmap for test 
+void iterate(map_t in){
+
+
+	hashmap_map* m = (hashmap_map*) in;
+	int i;
+	int num = 0;
+	for(i = 0 ; i < m->table_size ; i ++){
+
+		hashmap_element* pointer = m->data[i];
+		printf("Under index:%d , we have the following key-value pairs\n",i);
+		while(pointer){
+			printf("key = %d, value = %d, index = %d\n" , strlen(pointer->key) ,*((int *)pointer->data)  , num++);
+			pointer = pointer->next;
+		}
+	
+	}
+}
+
+*/
 /*
  * Iterate the function parameter over each element in the hashmap.  The
  * additional any_t argument is passed to the function as its first
  * argument and the hashmap element is the second.
  */
-int hashmap_iterate(map_t in, PFany f, any_t item) {
-	int i;
+//int hashmap_iterate(map_t in, PFany f, any_t item) {
+//	int i;
 
 	/* Cast the hashmap */
-	hashmap_map* m = (hashmap_map*) in;
+//	hashmap_map* m = (hashmap_map*) in;
 
 	/* On empty hashmap, return immediately */
-	if (hashmap_length(m) <= 0)
-		return MAP_MISSING;	
+//	if (hashmap_length(m) <= 0)
+//		return MAP_MISSING;	
 
 	/* Linear probing */
-	for(i = 0; i< m->table_size; i++)
-		if(m->data[i].in_use != 0) {
-			any_t data = (any_t) (m->data[i].data);
-			int status = f(item, data);
-			if (status != MAP_OK) {
-				return status;
-			}
-		}
+//	for(i = 0; i< m->table_size; i++)
+//		if(m->data[i].in_use != 0) {
+//			any_t data = (any_t) (m->data[i].data);
+//			int status = f(item, data);
+//			if (status != MAP_OK) {
+//				return status;
+//			}
+//		}
 
-    return MAP_OK;
-}
+//    return MAP_OK;
+//}
 
 /*
  * Remove an element with that key from the map
  */
 int hashmap_remove(map_t in, char* key){
-	int i;
 	int curr;
 	hashmap_map* m;
 
@@ -358,28 +401,32 @@ int hashmap_remove(map_t in, char* key){
 
 	/* Find key */
 	curr = hashmap_hash_int(m, key);
-
-	/* Linear probing, if necessary */
-	for(i = 0; i<MAX_CHAIN_LENGTH; i++){
-
-        int in_use = m->data[curr].in_use;
-        if (in_use == 1){
-            if (strcmp(m->data[curr].key,key)==0){
-                /* Blank out the fields */
-                m->data[curr].in_use = 0;
-                m->data[curr].data = NULL;
-                m->data[curr].key = NULL;
-
-                /* Reduce the size */
-                m->size--;
-                return MAP_OK;
-            }
-		}
-		curr = (curr + 1) % m->table_size;
+	
+	hashmap_element *pointer = m->data[curr];
+	
+	if(!pointer){
+		return MAP_MISSING;
+	} 
+	
+	if (strcmp(pointer->key,key)==0){
+		m->data[curr] = m->data[curr]->next;
+		free(pointer);
+		return MAP_OK;
 	}
 
-	/* Data not found */
+	hashmap_element *_pointer = pointer->next;
+	while(_pointer){
+		if (strcmp(_pointer->key,key)==0){
+			pointer->next = _pointer->next;
+			free(_pointer);
+			return MAP_OK;
+		}
+		pointer = _pointer;
+		_pointer = _pointer->next;
+	}	
+	
 	return MAP_MISSING;
+               
 }
 
 /* Deallocate the hashmap */
@@ -390,8 +437,8 @@ void hashmap_free(map_t in){
 }
 
 /* Return the length of the hashmap */
-int hashmap_length(map_t in){
-	hashmap_map* m = (hashmap_map *) in;
-	if(m != NULL) return m->size;
-	else return 0;
-}
+//int hashmap_length(map_t in){
+//	hashmap_map* m = (hashmap_map *) in;
+//	if(m != NULL) return m->size;
+//	else return 0;
+//}
