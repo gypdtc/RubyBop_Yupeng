@@ -8,7 +8,7 @@
 #define STRSIZE 50
 
 int main(){
-   map_t hash = hashmap_new();
+   map_t hash = hashmap_new(sizeof(int));
    int a = 3;
    assert(hashmap_put(hash , "test" ,&a) == MAP_OK);
    void *b;
@@ -23,17 +23,16 @@ int main(){
    assert(hashmap_remove(hash , "test") == MAP_OK);
    assert(hashmap_get(hash , "test" ,&b) == MAP_MISSING);
    
-   char keyall[50] = "";
+   char keyall[50] = "aaaaaaaaaaaaaaaaa";
    int i;
    for(i = 0 ; i < 10 ; i++){ 
    	char key[STRSIZE];
     	memcpy(key, keyall, i + 1);
      	key[i + 1] = '\0';
-      	assert(hashmap_put(hash, key, &i) == MAP_OK);
+   //   	printf("Now put key = %s\n",key);
+	assert(hashmap_put(hash, key, &i) == MAP_OK);
    }
    
-   printf("Puting all 10 elements in the hashmap\n");
-
    int sum = 0;
    for(i = 0 ; i < 10 ; i++){
   	void *result;
@@ -44,6 +43,7 @@ int main(){
 		assert(hashmap_get(hash , key  ,&result) == MAP_OK);
 		int *p = (int *)result;
 		sum += *p;
+//		printf("i=%d,sum=%d,p=%d\n",i,sum,(*p));
 		BOP_record_read(&sum , sizeof(int));
 		BOP_record_write(&sum , sizeof(int));
 		sleep(1);

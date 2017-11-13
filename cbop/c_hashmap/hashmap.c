@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../bop_api.h"
+
 #define INITIAL_SIZE (8)
 #define MAX_CHAIN_LENGTH (8)
 
@@ -202,12 +204,19 @@ hashmap_element* hashmap_hash(map_t in, char* key){
 	/* Find the best index */
 	curr = hashmap_hash_int(m, key);
 
-
+	printf("Now putting curr = %d, key = %s\n",curr,key);
 	hashmap_element *pointer = m->data[curr];
+	BOP_record_read(&m->data[curr] , sizeof(hashmap_element*));
+	BOP_record_read(m->data[curr] , sizeof(hashmap_element));
+
 	hashmap_element *_pointer;
 	if(!pointer){
 		pointer = (hashmap_element*) calloc (1, sizeof(hashmap_element));
+		BOP_record_write(pointer , sizeof(hashmap_element));
+		
 		m->data[curr] = pointer;
+		BOP_record_write(&m->data[curr] , sizeof(hashmap_element*));
+		
 		return pointer;
 	}
 
@@ -217,15 +226,23 @@ hashmap_element* hashmap_hash(map_t in, char* key){
 	while(length <= MAX_CHAIN_LENGTH){
 			
 		if(strcmp(pointer->key,key) == 0){
+			BOP_record_read(pointer->key , strlen(pointer->key));
 			return pointer;
 		}
+		BOP_record_read(pointer->key , strlen(pointer->key));		
 
 		length++;
 		_pointer = pointer->next;
-		
+		BOP_record_read(&pointer->next , sizeof(hashmap_element *));		
+
 		if(!_pointer){
 			_pointer = (hashmap_element*) calloc (1 , sizeof(hashmap_element));
+			BOP_record_write(_pointer , sizeof(hashmap_element));
+			BOP_record_write(&_pointer ,sizeof(hashmap_element*));
+
 			pointer->next = _pointer;
+			BOP_record_write(&pointer->next , sizeof(hashmap_element*));
+			
 			return _pointer;
 		}	
 		pointer = _pointer;
@@ -298,15 +315,30 @@ int hashmap_put(map_t in, char* key, any_t value){
 	if(m->value_size >0)
 	{	
 		target_pointer->data = (any_t) calloc(1, m->value_size);
+		BOP_record_write(target_pointer->data , m->value_size);
+		BOP_record_write(&target_pointer->data , sizeof(any_t));
+
 		memcpy(target_pointer->data , value , m->value_size);
+		BOP_record_read(value , m->value_size);
+
 	}else{
 		target_pointer->data = (any_t) calloc(strlen((char*) value) + 1 , sizeof(char));
+		BOP_record_write(target_pointer->data , strlen((char*)value) * sizeof(char));
+		BOP_record_write(&target_pointer->data , sizeof(any_t));
+	
 		memcpy(target_pointer->data , value , strlen((char*) value));
+		BOP_record_read(value , strlen((char*)value) * sizeof(char));
 	}
 
 	target_pointer->key = (char *) calloc(strlen(key) + 1,  sizeof(char));
+	BOP_record_write(target_pointer->key , sizeof(char) *(strlen(key) + 1));
+	BOP_record_write(&target_pointer->key , sizeof(char *));
+
 	memcpy(target_pointer->key , key , strlen(key));
+	BOP_record_read(key , strlen(key) * sizeof(char));
+
 	target_pointer->next = NULL;
+	BOP_record_write(&target_pointer->next , sizeof(hashmap_element*));
 	return MAP_OK;
 }
 
@@ -315,7 +347,7 @@ int hashmap_put(map_t in, char* key, any_t value){
  */
 int hashmap_get(map_t in, char* key, any_t *arg){
 	int curr;
-	
+	//printf("Try to read\n");	
 	hashmap_map* m;
 	hashmap_element* pointer;
 	
@@ -326,13 +358,23 @@ int hashmap_get(map_t in, char* key, any_t *arg){
 	curr = hashmap_hash_int(m, key);
 
 	pointer = m->data[curr];
+	BOP_record_read(pointer , sizeof(hashmap_element));
 	
 	while(pointer != NULL){
 		if (strcmp(pointer->key,key)==0){
-                	*arg = (pointer->data);
-                	return MAP_OK;
+                	BOP_record_read(pointer->key , sizeof(char) * strlen(pointer->key));
+			
+			*arg = (pointer->data);
+			if(m->value_size < 0)
+                		BOP_record_read(pointer->data, sizeof(char) * strlen(pointer->data));
+			else
+				BOP_record_read(pointer->data, m->value_size);
+
+			return MAP_OK;
             	}
+	
 		pointer = pointer -> next;
+		BOP_record_read(pointer->next , sizeof(hashmap_element));
 	}
 	
 	/* Not found */
@@ -341,7 +383,7 @@ int hashmap_get(map_t in, char* key, any_t *arg){
 	
 }
 
-/* Iterate the hashmap for test 
+/* Iterate the hashmap for test */ 
 void iterate(map_t in){
 
 
@@ -360,7 +402,7 @@ void iterate(map_t in){
 	}
 }
 
-*/
+
 /*
  * Iterate the function parameter over each element in the hashmap.  The
  * additional any_t argument is passed to the function as its first
@@ -403,24 +445,43 @@ int hashmap_remove(map_t in, char* key){
 	curr = hashmap_hash_int(m, key);
 	
 	hashmap_element *pointer = m->data[curr];
+	BOP_record_read(pointer , sizeof(hashmap_element));
 	
 	if(!pointer){
 		return MAP_MISSING;
 	} 
 	
 	if (strcmp(pointer->key,key)==0){
+		BOP_record_read(pointer->key , sizeof(char) * strlen(pointer->key));
+
 		m->data[curr] = m->data[curr]->next;
+		BOP_record_read(pointer->next, sizeof(hashmap_element));
+		BOP_record_write(&m->data[curr] , sizeof(hashmap_element*));
+
 		free(pointer);
+		BOP_record_write(pointer , sizeof(hashmap_element));
+		
 		return MAP_OK;
 	}
+	BOP_record_read(pointer->key , sizeof(char) * strlen(pointer->key));
 
 	hashmap_element *_pointer = pointer->next;
+	BOP_record_read(pointer->next , sizeof(hashmap_element));
+
 	while(_pointer){
 		if (strcmp(_pointer->key,key)==0){
+			BOP_record_read(_pointer->key , sizeof(char) * strlen(_pointer->key));
+
 			pointer->next = _pointer->next;
+			BOP_record_read(_pointer->next , sizeof(hashmap_element));
+	
 			free(_pointer);
+			BOP_record_write(_pointer, sizeof(hashmap_element));
+
 			return MAP_OK;
 		}
+		BOP_record_read(_pointer->key , sizeof(char) * strlen(_pointer->key));
+
 		pointer = _pointer;
 		_pointer = _pointer->next;
 	}	
