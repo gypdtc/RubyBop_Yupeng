@@ -597,7 +597,7 @@ static void wait_process() {
   if (BOP_get_verbose() >= 3) {
     print_ipa_stats();
   }
-   ipa_teardown();
+   //ipa_teardown();
   _exit(my_exit);
 }
 int block_signal(int signo){

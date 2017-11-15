@@ -43,7 +43,7 @@ int main(){
 		assert(hashmap_get(hash , key  ,&result) == MAP_OK);
 		int *p = (int *)result;
 		sum += *p;
-//		printf("i=%d,sum=%d,p=%d\n",i,sum,(*p));
+		BOP_printf("Reading:key = %s, value=%d, sum=%d\n",key,(*p) , sum);
 		BOP_record_read(&sum , sizeof(int));
 		BOP_record_write(&sum , sizeof(int));
 		sleep(1);

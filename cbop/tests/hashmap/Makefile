@@ -1,4 +1,4 @@
-BASE = map_read map_write
+BASE = map_write map_read
 OTHER = ../../c_hashmap/hashmap.o
 
 include ../common.mk

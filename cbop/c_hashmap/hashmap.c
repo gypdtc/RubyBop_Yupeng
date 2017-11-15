@@ -10,7 +10,7 @@
 #include "../bop_api.h"
 
 #define INITIAL_SIZE (8)
-#define MAX_CHAIN_LENGTH (8)
+#define MAX_CHAIN_LENGTH (256)
 
 int times;
 
@@ -204,7 +204,6 @@ hashmap_element* hashmap_hash(map_t in, char* key){
 	/* Find the best index */
 	curr = hashmap_hash_int(m, key);
 
-	printf("Now putting curr = %d, key = %s\n",curr,key);
 	hashmap_element *pointer = m->data[curr];
 	BOP_record_read(&m->data[curr] , sizeof(hashmap_element*));
 	BOP_record_read(m->data[curr] , sizeof(hashmap_element));
@@ -212,7 +211,7 @@ hashmap_element* hashmap_hash(map_t in, char* key){
 	hashmap_element *_pointer;
 	if(!pointer){
 		pointer = (hashmap_element*) calloc (1, sizeof(hashmap_element));
-		BOP_record_write(pointer , sizeof(hashmap_element));
+		//BOP_record_write(pointer , sizeof(hashmap_element));
 		
 		m->data[curr] = pointer;
 		BOP_record_write(&m->data[curr] , sizeof(hashmap_element*));
@@ -227,18 +226,22 @@ hashmap_element* hashmap_hash(map_t in, char* key){
 			
 		if(strcmp(pointer->key,key) == 0){
 			BOP_record_read(pointer->key , strlen(pointer->key));
+			BOP_record_read(&pointer->key , sizeof(char *));
 			return pointer;
 		}
+
 		BOP_record_read(pointer->key , strlen(pointer->key));		
+		BOP_record_read(&pointer->key , sizeof(char *));
 
 		length++;
+
 		_pointer = pointer->next;
 		BOP_record_read(&pointer->next , sizeof(hashmap_element *));		
-
+		//BOP_record_read(pointer->next , sizeof(hashmap_element));	
 		if(!_pointer){
 			_pointer = (hashmap_element*) calloc (1 , sizeof(hashmap_element));
-			BOP_record_write(_pointer , sizeof(hashmap_element));
-			BOP_record_write(&_pointer ,sizeof(hashmap_element*));
+		//	BOP_record_write(_pointer , sizeof(hashmap_element));
+		//	BOP_record_write(&_pointer ,sizeof(hashmap_element*));
 
 			pointer->next = _pointer;
 			BOP_record_write(&pointer->next , sizeof(hashmap_element*));
@@ -335,7 +338,7 @@ int hashmap_put(map_t in, char* key, any_t value){
 	BOP_record_write(&target_pointer->key , sizeof(char *));
 
 	memcpy(target_pointer->key , key , strlen(key));
-	BOP_record_read(key , strlen(key) * sizeof(char));
+	//BOP_record_read(key , strlen(key) * sizeof(char));
 
 	target_pointer->next = NULL;
 	BOP_record_write(&target_pointer->next , sizeof(hashmap_element*));
@@ -358,23 +361,26 @@ int hashmap_get(map_t in, char* key, any_t *arg){
 	curr = hashmap_hash_int(m, key);
 
 	pointer = m->data[curr];
-	BOP_record_read(pointer , sizeof(hashmap_element));
+	BOP_record_read(&pointer , sizeof(hashmap_element*));
 	
 	while(pointer != NULL){
 		if (strcmp(pointer->key,key)==0){
                 	BOP_record_read(pointer->key , sizeof(char) * strlen(pointer->key));
+			BOP_record_read(&pointer->key , sizeof(char *));
 			
 			*arg = (pointer->data);
-			if(m->value_size < 0)
+			if(m->value_size < 0){
                 		BOP_record_read(pointer->data, sizeof(char) * strlen(pointer->data));
-			else
+				//BOP_record_write(arg , sizeof(any_t));
+			}else{
 				BOP_record_read(pointer->data, m->value_size);
-
+				//BOP_record_write(arg , sizeof(any_t));
+			}
 			return MAP_OK;
             	}
 	
 		pointer = pointer -> next;
-		BOP_record_read(pointer->next , sizeof(hashmap_element));
+		BOP_record_read(&pointer->next , sizeof(hashmap_element*));
 	}
 	
 	/* Not found */
@@ -445,42 +451,42 @@ int hashmap_remove(map_t in, char* key){
 	curr = hashmap_hash_int(m, key);
 	
 	hashmap_element *pointer = m->data[curr];
-	BOP_record_read(pointer , sizeof(hashmap_element));
+	//BOP_record_read(pointer , sizeof(hashmap_element));
 	
 	if(!pointer){
 		return MAP_MISSING;
 	} 
 	
 	if (strcmp(pointer->key,key)==0){
-		BOP_record_read(pointer->key , sizeof(char) * strlen(pointer->key));
+		//BOP_record_read(pointer->key , sizeof(char) * strlen(pointer->key));
 
 		m->data[curr] = m->data[curr]->next;
-		BOP_record_read(pointer->next, sizeof(hashmap_element));
-		BOP_record_write(&m->data[curr] , sizeof(hashmap_element*));
+		//BOP_record_read(pointer->next, sizeof(hashmap_element));
+		//BOP_record_write(&m->data[curr] , sizeof(hashmap_element*));
 
 		free(pointer);
-		BOP_record_write(pointer , sizeof(hashmap_element));
+		//BOP_record_write(pointer , sizeof(hashmap_element));
 		
 		return MAP_OK;
 	}
-	BOP_record_read(pointer->key , sizeof(char) * strlen(pointer->key));
+	//BOP_record_read(pointer->key , sizeof(char) * strlen(pointer->key));
 
 	hashmap_element *_pointer = pointer->next;
-	BOP_record_read(pointer->next , sizeof(hashmap_element));
+	//BOP_record_read(pointer->next , sizeof(hashmap_element));
 
 	while(_pointer){
 		if (strcmp(_pointer->key,key)==0){
-			BOP_record_read(_pointer->key , sizeof(char) * strlen(_pointer->key));
+			//BOP_record_read(_pointer->key , sizeof(char) * strlen(_pointer->key));
 
 			pointer->next = _pointer->next;
-			BOP_record_read(_pointer->next , sizeof(hashmap_element));
+			//BOP_record_read(_pointer->next , sizeof(hashmap_element));
 	
 			free(_pointer);
-			BOP_record_write(_pointer, sizeof(hashmap_element));
+			//BOP_record_write(_pointer, sizeof(hashmap_element));
 
 			return MAP_OK;
 		}
-		BOP_record_read(_pointer->key , sizeof(char) * strlen(_pointer->key));
+		//BOP_record_read(_pointer->key , sizeof(char) * strlen(_pointer->key));
 
 		pointer = _pointer;
 		_pointer = _pointer->next;
